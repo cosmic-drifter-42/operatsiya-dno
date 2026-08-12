@@ -159,6 +159,34 @@
 
   #cf{position:fixed;inset:0;z-index:70;pointer-events:none}
 
+  /* ── Попередження про швидке листання ──── */
+  #warn{
+    position:fixed;inset:0;z-index:90;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:36px;padding:24px;text-align:center;
+    background:rgba(15,8,6,.94);
+    opacity:0;visibility:hidden;transition:opacity .18s ease;
+  }
+  #warn.show{opacity:1;visibility:visible}
+  #warn p{
+    font-family:var(--disp);font-weight:900;color:var(--magma);
+    font-size:clamp(1.6rem,8vw,3.6rem);line-height:1.1;
+    max-width:16ch;text-shadow:0 6px 40px rgba(224,78,31,.5);
+    transform:scale(.9);transition:transform .18s ease;
+  }
+  #warn.show p{transform:scale(1)}
+  #warn button{
+    font-family:var(--mono);font-size:13px;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--whitehot);
+    padding:16px 34px;background:transparent;
+    border:1.5px solid var(--magma);border-radius:0;cursor:pointer;
+    transition:background .18s ease,color .18s ease;
+  }
+  #warn button:hover{background:var(--magma);color:var(--ink)}
+  @media (prefers-reduced-motion: reduce){
+    #warn,#warn p,#warn button{transition:none}
+  }
+
   @media (prefers-reduced-motion: reduce){
     html{scroll-behavior:auto}
     .hint{animation:none}
@@ -169,6 +197,11 @@
 </style>
 </head>
 <body>
+
+<div id="warn" aria-hidden="true">
+  <p>ЛИСТАЙ НОРМАЛЬНО ПЕТУШАРА</p>
+  <button id="warnBtn" type="button">Повернутися під шконку</button>
+</div>
 
 <div class="hud" id="hud" aria-hidden="true">
   <span class="hud-label">ГЛИБИНА</span>
@@ -530,6 +563,57 @@
   document.getElementById('up').addEventListener('click', function(){
     window.scrollTo({ top: 0, behavior: rm ? 'auto' : 'smooth' });
   });
+
+  /* ── Детектор швидкого листання ────────── */
+  (function(){
+    var warn = document.getElementById('warn');
+    var btn = document.getElementById('warnBtn');
+    var lastY = window.scrollY || 0;
+    var lastT = performance.now();
+    var SPEED = 14;   // px за мс — реально ненормальна швидкість
+    var NEED = 4;     // стільки швидких кадрів поспіль має бути
+    var streak = 0;
+    var muted = false;  // глушимо детектор під час автоповернення
+
+    function show(){ warn.classList.add('show'); }
+
+    window.addEventListener('scroll', function(){
+      var y = window.scrollY || 0;
+      var now = performance.now();
+      var dt = now - lastT;
+      if (!muted && dt > 0){
+        var v = Math.abs(y - lastY) / dt;
+        if (v > SPEED){
+          streak++;
+          if (streak >= NEED && !fired) show();
+        } else {
+          streak = 0;
+        }
+      }
+      lastY = y; lastT = now;
+    }, { passive: true });
+
+    btn.addEventListener('click', function(){
+      warn.classList.remove('show');
+      streak = 0;
+      muted = true;
+      window.scrollTo({ top: 0, behavior: rm ? 'auto' : 'smooth' });
+      // тримаємо глушник, поки не доїхали на самий верх
+      var settle = setInterval(function(){
+        if ((window.scrollY || 0) <= 2){
+          clearInterval(settle);
+          setTimeout(function(){
+            lastY = window.scrollY || 0;
+            lastT = performance.now();
+            streak = 0;
+            muted = false;
+          }, 120);
+        }
+      }, 60);
+      // запобіжник: у будь-якому разі знімаємо глушник за 2.5 с
+      setTimeout(function(){ clearInterval(settle); muted = false; streak = 0; }, 2500);
+    });
+  })();
 })();
 </script>
 </body>
