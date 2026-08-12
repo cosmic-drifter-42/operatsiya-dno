@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1B1420">
+<title>ОПЕРАЦІЯ «ДНО»</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>⛏️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sky:#D9E6EF; --soil:#3A2A1E; --basalt:#1B1420;
+    --magma:#E8681B; --ember:#A8300E; --whitehot:#FFE9C4;
+    --text:#F4E9DC; --ink:#241009; --sky-ink:#1F2B36;
+    --disp:'Unbounded','Arial Black',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,'Courier New',monospace;
+    --body:'Manrope',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--body);
+    color:var(--text);
+    background-color:var(--basalt);
+    background-image:linear-gradient(180deg,
+      var(--sky) 0, #C6D6E3 5.9%, var(--soil) 6%,
+      #33241A 16%, #241B21 30%, var(--basalt) 46%,
+      #2A0F0C 60%, #571708 74%, var(--ember) 85%,
+      var(--magma) 93%, var(--whitehot) 100%);
+    background-image:linear-gradient(180deg,
+      var(--sky) 0, #C6D6E3 calc(100svh - 2px), var(--soil) 100svh,
+      #33241A 16%, #241B21 30%, var(--basalt) 46%,
+      #2A0F0C 60%, #571708 74%, var(--ember) 85%,
+      var(--magma) 93%, var(--whitehot) 100%);
+    overflow-x:hidden;
+  }
+
+  /* ── HUD ───────────────────────────────── */
+  .hud{
+    position:fixed;top:14px;left:16px;z-index:50;
+    font-family:var(--mono);color:var(--text);
+    transition:color .35s ease;user-select:none;
+  }
+  .hud.on-sky{color:var(--sky-ink)}
+  .hud.on-core{color:var(--ink)}
+  .hud-label{display:block;font-size:10px;letter-spacing:.3em}
+  .hud-depth{
+    display:block;margin-top:3px;
+    font-size:clamp(18px,4.6vw,26px);font-weight:500;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .hud-track{display:block;position:relative;width:132px;height:2px;margin-top:7px}
+  .hud-track::before{content:'';position:absolute;inset:0;background:currentColor;opacity:.22}
+  #bar{position:absolute;left:0;top:0;bottom:0;width:0%;background:currentColor}
+  .hud-target{display:block;margin-top:6px;font-size:9.5px;letter-spacing:.22em;opacity:.65}
+
+  /* ── Спільне ───────────────────────────── */
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.3em;
+    text-transform:uppercase;color:var(--magma);margin-bottom:16px;
+  }
+
+  /* ── Герой (поверхня) ──────────────────── */
+  .hero{
+    position:relative;min-height:100vh;min-height:100svh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 clamp(22px,7vw,96px);color:var(--sky-ink);
+  }
+  .hero .eyebrow{color:#8F3A12}
+  h1{
+    font-family:var(--disp);font-weight:900;
+    font-size:clamp(2.1rem,9vw,5rem);line-height:1.04;
+    letter-spacing:-.01em;max-width:12ch;
+  }
+  .lead{
+    margin-top:24px;max-width:36ch;
+    font-size:clamp(1rem,3.6vw,1.2rem);line-height:1.6;font-weight:500;
+  }
+  .hint{
+    position:absolute;bottom:26px;left:50%;transform:translateX(-50%);
+    font-family:var(--mono);font-size:11px;letter-spacing:.3em;white-space:nowrap;
+    animation:bounce 1.7s ease-in-out infinite;
+  }
+  @keyframes bounce{
+    0%,100%{transform:translate(-50%,0)}
+    50%{transform:translate(-50%,9px)}
+  }
+
+  /* ── Віхи спуску ───────────────────────── */
+  .m{
+    min-height:320vh;display:flex;align-items:center;
+    padding:0 clamp(22px,7vw,96px);
+  }
+  .m .wrap{
+    max-width:560px;
+    opacity:0;transform:translateY(30px);
+    transition:opacity .7s ease,transform .7s ease;
+  }
+  .m.in .wrap{opacity:1;transform:none}
+  .m:nth-of-type(even){justify-content:flex-end}
+  .m:nth-of-type(even) .wrap{text-align:right}
+  .m.center{justify-content:center}
+  .m.center .wrap{text-align:center}
+  .m h2{
+    font-family:var(--disp);font-weight:700;
+    font-size:clamp(1.5rem,5.6vw,2.9rem);line-height:1.14;
+  }
+  .note{
+    margin-top:14px;max-width:44ch;
+    font-size:clamp(.95rem,3.4vw,1.1rem);line-height:1.6;
+    opacity:.82;font-weight:500;
+  }
+  .m:nth-of-type(even) .note{margin-left:auto}
+  .gotcha{
+    font-family:var(--disp);font-weight:900;
+    font-size:clamp(2rem,8.5vw,4.2rem);margin-top:12px;
+  }
+
+  /* ── Фінал (ядро) ──────────────────────── */
+  .finale{
+    min-height:220vh;min-height:220svh;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;color:var(--ink);
+    padding:60px 20px 72px;
+  }
+  .finale .eyebrow{color:#7A2A0C}
+  .who{
+    font-family:var(--disp);font-weight:900;
+    font-size:clamp(1.55rem,8.2vw,4.6rem);letter-spacing:.02em;line-height:1.05;
+  }
+  .loh{
+    font-family:var(--disp);font-weight:900;
+    font-size:clamp(6.4rem,37vw,20rem);line-height:.95;letter-spacing:-.02em;
+    text-shadow:0 12px 70px rgba(224,78,31,.5);
+  }
+  .who,.loh,.stats,.up{opacity:0;transform:translateY(26px) scale(.94)}
+  .finale.go .who,.finale.go .loh,.finale.go .stats,.finale.go .up{
+    opacity:1;transform:none;transition:opacity .8s ease,transform .8s ease;
+  }
+  .finale.go .loh{transition-delay:.25s}
+  .finale.go .stats{transition-delay:.55s}
+  .finale.go .up{transition-delay:.75s}
+  .stats{
+    margin-top:36px;font-family:var(--mono);
+    font-size:12px;letter-spacing:.16em;text-transform:uppercase;
+    display:flex;gap:30px;flex-wrap:wrap;justify-content:center;
+  }
+  .stats b{display:block;margin-top:5px;font-size:17px;font-weight:500;letter-spacing:.06em}
+  .up{
+    margin-top:40px;font-family:var(--mono);
+    font-size:12px;letter-spacing:.24em;text-transform:uppercase;
+    padding:14px 28px;background:transparent;color:inherit;
+    border:1.5px solid currentColor;border-radius:0;cursor:pointer;
+  }
+  .up:hover{background:var(--ink);color:var(--whitehot)}
+  :focus-visible{outline:2.5px solid currentColor;outline-offset:3px}
+
+  #cf{position:fixed;inset:0;z-index:70;pointer-events:none}
+
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto}
+    .hint{animation:none}
+    .m .wrap,.who,.loh,.stats,.up,.finale.go .who,.finale.go .loh,.finale.go .stats,.finale.go .up{
+      transition:none;transform:none;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="hud" id="hud" aria-hidden="true">
+  <span class="hud-label">ГЛИБИНА</span>
+  <span class="hud-depth" id="depth">0&nbsp;М</span>
+  <span class="hud-track"><i id="bar"></i></span>
+  <span class="hud-target">ЦІЛЬ: −6&#8239;371&nbsp;КМ</span>
+</div>
+
+<header class="hero">
+  <p class="eyebrow">Експедиційний бриф · Цілком таємно</p>
+  <h1>ОПЕРАЦІЯ «ДНО»</h1>
+  <p class="lead">Розвідка повідомляє: на самому дні цієї сторінки заховано повідомлення надзвичайної ваги. Глибина цілі — 6&#8239;371&nbsp;км. Транспорт не передбачено. Тільки палець.</p>
+  <p class="hint">▼ ПОЧАТИ СПУСК</p>
+</header>
+
+<main>
+  <section class="m" data-depth="3">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −3 м</p>
+      <h2>Поверхню пройдено.</h2>
+      <p class="note">Далі — тільки вниз.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="105">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −105 м</p>
+      <h2>Ти вже глибше за «Арсенальну».</h2>
+      <p class="note">Найглибшу станцію метро в світі. Було легко? Це тільки початок.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="330">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −330 м</p>
+      <h2>Ти вже нижче основи Ейфелевої вежі.</h2>
+      <p class="note">Якби її закопати. Скролимо далі.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="452">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −452 м</p>
+      <h2>Тут закінчилася б Petronas Towers.</h2>
+      <p class="note">А ти ще й не розігрівся.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="1000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −1&#8239;000 м</p>
+      <h2>Перший кілометр.</h2>
+      <p class="note">Палець ще тримається? Попереду ще шість тисяч триста сімдесят.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="2197">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −2&#8239;197 м</p>
+      <h2>Найглибший басейн світу — калюжа проти тебе.</h2>
+      <p class="note">Тиск росте. Рішучість — теж.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="4500">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −4&#8239;500 м</p>
+      <h2>Глибше за найглибшу шахту планети.</h2>
+      <p class="note">Тут ще ніхто не скролив.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="8848">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −8&#8239;848 м</p>
+      <h2>Ти закопав цілий Еверест.</h2>
+      <p class="note">Вниз головою. Вітаємо, альпініст навпаки.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="10935">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −10&#8239;935 м</p>
+      <h2>Маріанська западина позаду.</h2>
+      <p class="note">Найглибша точка океану. Ти вже глибший за неї.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="12262">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −12&#8239;262 м</p>
+      <h2>Рекорд буріння людства — позаду.</h2>
+      <p class="note">Далі техніка не дістає. Тільки палець і воля.</p>
+    </div>
+  </section>
+
+  <section class="m center" data-depth="15000">
+    <div class="wrap">
+      <p class="eyebrow">−15&#8239;000 м · Вхідне повідомлення</p>
+      <h2>РОЗШИФРОВКА:</h2>
+      <p class="gotcha">…жартую.</p>
+      <p class="note">Копай далі, боєць.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="35000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −35 км</p>
+      <h2>Земна кора скінчилась.</h2>
+      <p class="note">Твоя впертість — ще ні.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="100000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −100 км</p>
+      <h2>Літосфера скінчилась.</h2>
+      <p class="note">Далі порода тече, як пластилін. А ти все скролиш.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="410000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −410 км</p>
+      <h2>Перехідна зона.</h2>
+      <p class="note">Мінерали ламаються від тиску. Твій палець — ні.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="700000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −700 км</p>
+      <h2>Мантія.</h2>
+      <p class="note">Тут нічого немає. Взагалі нічого. Скроль.</p>
+    </div>
+  </section>
+
+  <section class="m center" data-depth="1200000">
+    <div class="wrap">
+      <p class="eyebrow">−1&#8239;200 км · Вхідне повідомлення</p>
+      <h2>СИГНАЛ:</h2>
+      <p class="gotcha">«ти ще тут?»</p>
+      <p class="note">Так. Так, він ще тут. Копай.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="2000000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −2&#8239;000 км</p>
+      <h2>Нижня мантія. +3&#8239;000&nbsp;°C.</h2>
+      <p class="note">Гаряче, як твій завзятий палець.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="2900000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −2&#8239;900 км</p>
+      <h2>Зовнішнє ядро. +5&#8239;000&nbsp;°C.</h2>
+      <p class="note">Розплавлене залізо. Тепленько.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="5100000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −5&#8239;100 км</p>
+      <h2>Внутрішнє ядро.</h2>
+      <p class="note">Твердіше хіба твоє бажання дійти до кінця.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="5500000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −5&#8239;500 км</p>
+      <h2>Температура як на поверхні Сонця.</h2>
+      <p class="note">≈5&#8239;500&nbsp;°C. А ти прохолодно скролиш далі.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="6000000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −6&#8239;000 км</p>
+      <h2>Лишилось 371 км.</h2>
+      <p class="note">Це менше, ніж ти вже проскролив. Тримайся.</p>
+    </div>
+  </section>
+
+  <section class="m" data-depth="6350000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −6&#8239;350 км</p>
+      <h2>21 кілометр до цілі.</h2>
+      <p class="note">Повітря пахне перемогою. І трохи розплавленим залізом.</p>
+    </div>
+  </section>
+
+  <section class="m center" data-depth="6370000">
+    <div class="wrap">
+      <p class="eyebrow">Глибина −6&#8239;370 км</p>
+      <h2>ЩЕ. ОДИН. СВАЙП.</h2>
+    </div>
+  </section>
+</main>
+
+<footer class="finale" id="finale" data-depth="6371000">
+  <p class="eyebrow">Ціль досягнуто · Повідомлення розсекречено</p>
+  <p class="who">FIFTYCENTER</p>
+  <p class="loh">ЛОХ</p>
+  <div class="stats">
+    <div>Глибина<b>6&#8239;371 КМ</b></div>
+    <div>Час спуску<b id="time">—</b></div>
+    <div>Свайпів<b id="swipes">—</b></div>
+  </div>
+  <button class="up" id="up" type="button">⛏ На поверхню</button>
+</footer>
+
+<script>
+(function(){
+  var rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var t0 = performance.now();
+  var hud = document.getElementById('hud');
+  var depthEl = document.getElementById('depth');
+  var bar = document.getElementById('bar');
+  var hero = document.querySelector('.hero');
+  var finale = document.getElementById('finale');
+  var secs = Array.prototype.slice.call(document.querySelectorAll('[data-depth]'));
+  var CORE = 6371000;
+  var pts = [], docH = 0, ticking = false;
+
+  function nbsp(n){
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '\u202F');
+  }
+  function fmt(d){
+    if (d < 1) return '0\u00A0М';
+    if (d < 1000) return '\u2212' + nbsp(Math.round(d)) + '\u00A0М';
+    return '\u2212' + nbsp(Math.round(d/1000)) + '\u00A0КМ';
+  }
+
+  function build(){
+    docH = document.documentElement.scrollHeight;
+    pts = [{ y: hero.offsetHeight * 0.9, d: 0 }];
+    secs.forEach(function(s){
+      pts.push({ y: s.offsetTop + s.offsetHeight * 0.5, d: +s.dataset.depth });
+    });
+    pts.push({ y: docH - window.innerHeight * 0.5, d: CORE });
+    pts.sort(function(a,b){ return a.y - b.y; });
+  }
+
+  function depthAt(y){
+    if (y <= pts[0].y) return 0;
+    for (var i = 1; i < pts.length; i++){
+      if (y <= pts[i].y){
+        var a = pts[i-1], b = pts[i];
+        var t = (y - a.y) / (b.y - a.y || 1);
+        return a.d + (b.d - a.d) * t;
+      }
+    }
+    return CORE;
+  }
+
+  function render(){
+    ticking = false;
+    var sy = window.scrollY || window.pageYOffset;
+    var vh = window.innerHeight;
+    var probe = sy + vh * 0.55;
+    depthEl.textContent = fmt(Math.min(depthAt(probe), CORE));
+    var p = Math.max(0, Math.min(1, sy / (docH - vh || 1)));
+    bar.style.width = (p * 100) + '%';
+    if (sy < hero.offsetHeight - 70) hud.className = 'hud on-sky';
+    else if (sy > finale.offsetTop - vh * 0.7) hud.className = 'hud on-core';
+    else hud.className = 'hud';
+  }
+
+  function onScroll(){
+    if (!ticking){ ticking = true; requestAnimationFrame(render); }
+  }
+
+  build(); render();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', function(){ build(); render(); });
+  window.addEventListener('load', function(){ build(); render(); });
+
+  /* поява віх */
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.3 });
+  document.querySelectorAll('.m').forEach(function(s){ io.observe(s); });
+
+  /* фінал */
+  var fired = false;
+  var fio = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if (e.isIntersecting && !fired){
+        fired = true;
+        finale.classList.add('go');
+        var ms = performance.now() - t0;
+        var s = Math.round(ms / 1000);
+        var mm = Math.floor(s / 60), ss = ('0' + (s % 60)).slice(-2);
+        document.getElementById('time').textContent = mm + ':' + ss;
+        document.getElementById('swipes').textContent = '\u2248' + nbsp(Math.max(1, Math.round((docH - window.innerHeight) / 600)));
+        if (!rm) confetti();
+        fio.unobserve(finale);
+      }
+    });
+  }, { threshold: 0.45 });
+  fio.observe(finale);
+
+  /* конфеті на світлому ядрі */
+  function confetti(){
+    var c = document.createElement('canvas');
+    c.id = 'cf';
+    document.body.appendChild(c);
+    var ctx = c.getContext('2d');
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var W, H;
+    function size(){
+      W = window.innerWidth; H = window.innerHeight;
+      c.width = W * dpr; c.height = H * dpr;
+      c.style.width = W + 'px'; c.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    size();
+    var colors = ['#241009', '#A8300E', '#E8681B', '#3A2A1E', '#571708'];
+    var ps = [];
+    for (var i = 0; i < 130; i++){
+      ps.push({
+        x: Math.random() * W,
+        y: -20 - Math.random() * H * 0.6,
+        w: 5 + Math.random() * 6,
+        h: 8 + Math.random() * 8,
+        vy: 2 + Math.random() * 3.4,
+        vx: -1 + Math.random() * 2,
+        r: Math.random() * Math.PI,
+        vr: -0.12 + Math.random() * 0.24,
+        col: colors[i % colors.length]
+      });
+    }
+    var start = performance.now();
+    (function loop(now){
+      ctx.clearRect(0, 0, W, H);
+      var alive = false;
+      ps.forEach(function(p){
+        p.y += p.vy; p.x += p.vx; p.r += p.vr;
+        if (p.y < H + 30){
+          alive = true;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.r);
+          ctx.fillStyle = p.col;
+          ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+          ctx.restore();
+        }
+      });
+      if (alive && now - start < 6000) requestAnimationFrame(loop);
+      else c.remove();
+    })(start);
+  }
+
+  document.getElementById('up').addEventListener('click', function(){
+    window.scrollTo({ top: 0, behavior: rm ? 'auto' : 'smooth' });
+  });
+})();
+</script>
+</body>
+</html>
